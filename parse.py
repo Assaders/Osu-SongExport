@@ -4,9 +4,11 @@ import os
 import re
 import sys
 from shutil import copyfile
-from winreg import HKEY_LOCAL_MACHINE, OpenKey, EnumKey, QueryValueEx, KEY_READ
 from mutagen.id3 import ID3NoHeaderError
 from mutagen.id3 import ID3, TPE1, TIT2
+
+if sys.platform.startswith("win"):
+    from winreg import HKEY_LOCAL_MACHINE, OpenKey, EnumKey, QueryValueEx, KEY_READ
 
 
 VERSION = '0.4'
@@ -88,14 +90,11 @@ def main():
 
     args = parser.parse_args()
 
-    # if len(sys.argv) < 2:
-    #     print("Please enter the path to songs dir")
-    #     exit(0)
-
-    # path = sys.argv[1]
-
     if not args.in_dir:
-        path = find_osu_in_registry() 
+        if sys.platform.startswith("win"):
+            path = find_osu_in_registry()
+        else:
+            path = ''
     else:
         path = args.in_dir
 
@@ -106,7 +105,7 @@ def main():
     print(path)
 
     if not os.path.isdir(args.out_dir):
-        if (query_yes_no('Output directory not exist. Create new one?')):
+        if query_yes_no('Output directory not exist. Create new one?'):
             os.mkdir(args.out_dir)
         else:
             print('Specify valid output directory as -out parameter (default: \'out\')')
@@ -144,7 +143,7 @@ def main():
 
             title = title_unicode[0] if title_unicode else re.findall(r'Title:(.+)\n+', osu)[0]
             artist = artist_unicode[0] if artist_unicode else re.findall(r'Artist:(.+)\n+', osu)[0]
-            track_name = re.findall(r'AudioFilename: (.+)\n+', osu)[0]#.replace('\r', '')
+            track_name = re.findall(r'AudioFilename: (.+)\n+', osu)[0]
 
             title = title.strip()
             artist = artist.strip()
@@ -175,9 +174,9 @@ def main():
                 print('\t' + 'Adding ID3 header')
                 tags = ID3()
 
-            if not "TIT2" in tags:
+            if "TIT2" not in tags:
                 tags["TIT2"] = TIT2(encoding=3, text=title)
-            if not "TPE1" in tags:
+            if "TPE1" not in tags:
                 tags["TPE1"] = TPE1(encoding=3, text=artist)
 
             tags.save(new_track_path)
